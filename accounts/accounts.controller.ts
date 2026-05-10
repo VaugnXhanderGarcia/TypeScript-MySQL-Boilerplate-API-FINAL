@@ -1,3 +1,10 @@
+/**
+ * @swagger
+ * tags:
+ *   name: Accounts
+ *   description: Account authentication and management
+ */
+
 import express from 'express';
 const router = express.Router();
 import Joi from 'joi';
@@ -6,17 +13,180 @@ import authorize from '../_middleware/authorize';
 import Role from '../_helpers/role';
 import accountService from './account.service';
 
-
+/**
+ * @swagger
+ * /accounts/authenticate:
+ *   post:
+ *     summary: Authenticate account and return JWT token
+ *     tags: [Accounts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: admin@test.com
+ *               password:
+ *                 type: string
+ *                 example: 123456
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *       400:
+ *         description: Email or password is incorrect
+ */
 router.post('/authenticate', authenticateSchema, authenticate);
 router.post('/refresh-token', refreshToken);
 router.post('/revoke-token', authorize(), revokeTokenSchema, revokeToken);
+/**
+ * @swagger
+ * /accounts/register:
+ *   post:
+ *     summary: Register a new account
+ *     tags: [Accounts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *               - firstName
+ *               - lastName
+ *               - email
+ *               - password
+ *               - confirmPassword
+ *               - acceptTerms
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 example: Mr
+ *               firstName:
+ *                 type: string
+ *                 example: Admin
+ *               lastName:
+ *                 type: string
+ *                 example: User
+ *               email:
+ *                 type: string
+ *                 example: admin@test.com
+ *               password:
+ *                 type: string
+ *                 example: 123456
+ *               confirmPassword:
+ *                 type: string
+ *                 example: 123456
+ *               acceptTerms:
+ *                 type: boolean
+ *                 example: true
+ *     responses:
+ *       200:
+ *         description: Registration successful. Verification email sent.
+ */
 router.post('/register', registerSchema, register);
+/**
+ * @swagger
+ * /accounts/verify-email:
+ *   post:
+ *     summary: Verify account email using token
+ *     tags: [Accounts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 example: verification_token_here
+ *     responses:
+ *       200:
+ *         description: Verification successful
+ *       400:
+ *         description: Verification failed
+ */
 router.post('/verify-email', verifyEmailSchema, verifyEmail);
+/**
+ * @swagger
+ * /accounts/forgot-password:
+ *   post:
+ *     summary: Send password reset email
+ *     tags: [Accounts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: user@test.com
+ *     responses:
+ *       200:
+ *         description: Password reset email sent if account exists
+ */
 router.post('/forgot-password', forgotPasswordSchema, forgotPassword);
 router.post('/validate-reset-token', validateResetTokenSchema, validateResetToken);
+/**
+ * @swagger
+ * /accounts/reset-password:
+ *   post:
+ *     summary: Reset password using reset token
+ *     tags: [Accounts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *               - password
+ *               - confirmPassword
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 example: reset_token_here
+ *               password:
+ *                 type: string
+ *                 example: 123456
+ *               confirmPassword:
+ *                 type: string
+ *                 example: 123456
+ *     responses:
+ *       200:
+ *         description: Password reset successful
+ */
 router.post('/reset-password', resetPasswordSchema, resetPassword);
 router.get('/', authorize(Role.Admin), getAll);
 router.get('/:id', authorize(), getById);
+/**
+ * @swagger
+ * /accounts:
+ *   get:
+ *     summary: Get all accounts
+ *     tags: [Accounts]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of accounts
+ *       401:
+ *         description: Unauthorized
+ */
 router.post('/', authorize(Role.Admin), createSchema, create);
 router.put('/:id', authorize(), updateSchema, update);
 router.delete('/:id', authorize(), _delete);

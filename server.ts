@@ -5,9 +5,12 @@ import cors from 'cors';
 import errorHandler from './_middleware/error-handler';
 import accountsController from './accounts/accounts.controller';
 import { initialize } from './_helpers/db';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './swagger';
 
 const app = express();
 
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use(cookieParser());

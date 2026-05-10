@@ -106,7 +106,8 @@ async function register(params: any, origin: any) {
     params.email = String(params.email).trim().toLowerCase();
 
     if (await db.Account.findOne({ where: { email: params.email } })) {
-        throw 'Email "' + params.email + '" is already registered';
+        await sendAlreadyRegisteredEmail(params.email, origin);
+        return;
     }
 
     const account = new db.Account(params);
@@ -114,18 +115,13 @@ async function register(params: any, origin: any) {
     const isFirstAccount = (await db.Account.count()) === 0;
     account.role = isFirstAccount ? Role.Admin : Role.User;
 
+    account.verificationToken = randomTokenString();
+
     account.passwordHash = await hash(params.password);
-
-    // AUTO VERIFY ACCOUNT BECAUSE EMAIL SENDING IS DISABLED
-    account.verified = new Date();
-    account.verificationToken = null;
-
-    console.log('AUTO VERIFIED NEW ACCOUNT:', account.email, account.role);
 
     await account.save();
 
-    // Email sending is disabled for this local activity
-    // await sendVerificationEmail(account, origin);
+    await sendVerificationEmail(account, origin);
 }
 
 async function verifyEmail({ token }: any) {
@@ -133,8 +129,9 @@ async function verifyEmail({ token }: any) {
 
     if (!account) throw 'Verification failed';
 
-    account.verified = Date.now();
+    account.verified = new Date();
     account.verificationToken = null;
+
     await account.save();
 }
 
@@ -183,12 +180,16 @@ async function getById(id: any) {
 }
 
 async function create(params: any) {
+    params.email = String(params.email).trim().toLowerCase();
+
     if (await db.Account.findOne({ where: { email: params.email } })) {
         throw 'Email "' + params.email + '" is already registered';
     }
 
     const account = new db.Account(params);
-    account.verified = Date.now();
+
+    account.verified = new Date();
+    account.verificationToken = null;
 
     account.passwordHash = await hash(params.password);
 
@@ -264,22 +265,24 @@ function basicDetails(account: any) {
 
 async function sendVerificationEmail(account: any, origin: any) {
     let message;
+
     if (origin) {
         const verifyUrl = `${origin}/account/verify-email?token=${account.verificationToken}`;
-        message = `<p>Please use the below token to verify your email address with the <code>/account/verify-email</code> api route:</p>
-                   <p><code>${account.verificationToken}</code></p>
-                   <p><a href="${verifyUrl}">${verifyUrl}</a></p>`;
+        message = `
+            <p>Please click the link below to verify your email address:</p>
+            <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+        `;
     } else {
-        message = `<p>Please use the below token to verify your email address with the <code>/account/verify-email</code> api route:</p>
-                   <p><code>${account.verificationToken}</code></p>`;
+        message = `
+            <p>Please use the below token to verify your email address with the <code>/accounts/verify-email</code> API route:</p>
+            <p><code>${account.verificationToken}</code></p>
+        `;
     }
 
     await sendEmail({
         to: account.email,
         subject: 'Sign-up Verification API - Verify Email',
-        html: `<h4>Verify Email</h4>
-               <p>Thanks for registering!</p>
-               ${message}`
+        html: `<h4>Verify Email</h4>${message}`
     });
 }
 
