@@ -1,0 +1,19 @@
+{
+  "database": {
+    "host": "localhost",
+    "port": 3306,
+    "user": "root",
+    "password": "",
+    "database": "uc_auth_db"
+  },
+  "secret": "THIS_IS_MY_SECRET_KEY_CHANGE_LATER",
+  "emailFrom": "info@uc-auth-api.com",
+  "smtpOptions": {
+    "host": "smtp.ethereal.email",
+    "port": 587,
+    "auth": {
+      "user": "your_ethereal_user",
+      "pass": "your_ethereal_pass"
+    }
+  }
+} 
