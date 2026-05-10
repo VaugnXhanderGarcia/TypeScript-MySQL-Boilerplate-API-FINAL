@@ -11,11 +11,16 @@ export default db;
 export async function initialize() {
     const { host, port, user, password, database } = config.database;
 
-   const connection = await mysql.createConnection({
+const connection = await mysql.createConnection({
     host: process.env.DB_HOST,
     port: Number(process.env.DB_PORT),
     user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD
+    password: process.env.DB_PASSWORD,
+    ssl: process.env.DB_SSL === 'true'
+        ? {
+            rejectUnauthorized: false
+        }
+        : undefined
 });
 
     await connection.query(`CREATE DATABASE IF NOT EXISTS \`${process.env.DB_NAME}\`;`);
@@ -28,7 +33,15 @@ export async function initialize() {
     {
         host: process.env.DB_HOST,
         port: Number(process.env.DB_PORT),
-        dialect: 'mysql'
+        dialect: 'mysql',
+        dialectOptions: process.env.DB_SSL === 'true'
+            ? {
+                ssl: {
+                    require: true,
+                    rejectUnauthorized: false
+                }
+            }
+            : {}
     }
 );
 

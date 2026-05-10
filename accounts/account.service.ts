@@ -1,4 +1,4 @@
-import config from '../config.json';
+
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
@@ -263,21 +263,15 @@ function basicDetails(account: any) {
     return { id, title, firstName, lastName, email, role, created, updated, isVerified };
 }
 
-async function sendVerificationEmail(account: any, origin: any) {
-    let message;
+    async function sendVerificationEmail(account: any, origin: any) {
+    const frontendUrl = process.env.CORS_ORIGIN || 'http://localhost:4200';
 
-    if (origin) {
-        const verifyUrl = `${origin}/account/verify-email?token=${account.verificationToken}`;
-        message = `
-            <p>Please click the link below to verify your email address:</p>
-            <p><a href="${verifyUrl}">${verifyUrl}</a></p>
-        `;
-    } else {
-        message = `
-            <p>Please use the below token to verify your email address with the <code>/accounts/verify-email</code> API route:</p>
-            <p><code>${account.verificationToken}</code></p>
-        `;
-    }
+    const verifyUrl = `${frontendUrl}/account/verify-email?token=${account.verificationToken}`;
+
+    const message = `
+        <p>Please click the link below to verify your email address:</p>
+        <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+    `;
 
     await sendEmail({
         to: account.email,
