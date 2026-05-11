@@ -238,11 +238,21 @@ async function hash(password: any) {
 }
 
 function generateJwtToken(account: any) {
+    const secret = process.env.JWT_SECRET;
+
+    if (!secret) {
+        throw new Error('JWT_SECRET is missing in .env file');
+    }
+
     return jwt.sign(
-    { sub: account.id, id: account.id },
-    process.env.JWT_SECRET as string,
-    { expiresIn: '15m' }
-);
+        {
+            sub: account.id,
+            id: account.id,
+            role: account.role
+        },
+        secret,
+        { expiresIn: '15m' }
+    );
 }
 
 function generateRefreshToken(account: any, ipAddress: any) {
