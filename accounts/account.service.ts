@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import db from '../_helpers/db';
-import sendEmail from '../_helpers/send-email';
+import { sendEmail } from '../_helpers/send-email';
 
 const jwtSecret = process.env.JWT_SECRET || 'uc_auth_secret_123456';
 const frontendUrl = process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:4200';
