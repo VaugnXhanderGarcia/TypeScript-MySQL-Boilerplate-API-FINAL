@@ -395,11 +395,13 @@ function _delete(req: any, res: any, next: any) {
 }
 
 function setTokenCookie(res: Response, token: string) {
+    const isProduction = process.env.NODE_ENV === 'production';
+
     const cookieOptions = {
         httpOnly: true,
         expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'strict' as const,
-        secure: process.env.NODE_ENV === 'production'
+        sameSite: isProduction ? 'none' as const : 'lax' as const,
+        secure: isProduction
     };
 
     res.cookie('refreshToken', token, cookieOptions);
