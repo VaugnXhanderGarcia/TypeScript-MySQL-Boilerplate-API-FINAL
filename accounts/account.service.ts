@@ -31,7 +31,7 @@ async function authenticate({ email, password, ipAddress }: any) {
     }
 
     const jwtToken = generateJwtToken(account);
-    const refreshToken = generateRefreshToken(account, ipAddress);
+    const refreshToken = await generateRefreshToken(account, ipAddress);
 
     await refreshToken.save();
 
@@ -50,7 +50,7 @@ async function refreshToken({ token, ipAddress }: any) {
     const refreshToken = await getRefreshToken(token);
     const account = await refreshToken.getAccount();
 
-    const newRefreshToken = generateRefreshToken(account, ipAddress);
+    const newRefreshToken = await generateRefreshToken(account, ipAddress);
 
     refreshToken.revoked = new Date();
     refreshToken.revokedByIp = ipAddress;
@@ -246,30 +246,34 @@ async function hash(password: string) {
 
 function generateJwtToken(account: any) {
     return jwt.sign(
-        {
-            sub: account.id,
-            id: account.id,
-            role: account.role
-        },
-        jwtSecret,
-        {
-            expiresIn: '15m'
-        }
+        { sub: account.id, id: account.id, role: account.role },
+        process.env.JWT_SECRET as string,
+        { expiresIn: '15m' }
     );
 }
 
-function generateRefreshToken(account: any, ipAddress: string) {
+async function generateRefreshToken(account: any, ipAddress: string) {
     return new db.RefreshToken({
         accountId: account.id,
         token: randomTokenString(),
         expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        created: Date.now(),
         createdByIp: ipAddress
     });
 }
 
 function randomTokenString() {
     return crypto.randomBytes(40).toString('hex');
+}
+
+function setTokenCookie(res: any, token: string) {
+    const cookieOptions = {
+        httpOnly: true,
+        sameSite: 'none' as const,
+        secure: true,
+        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    };
+
+    res.cookie('refreshToken', token, cookieOptions);
 }
 
 function basicDetails(account: any) {
@@ -303,12 +307,12 @@ function basicDetails(account: any) {
 }
 
 async function sendVerificationEmail(account: any, origin: string) {
-    const verifyUrl = `${process.env.https://angular-auth-frontend-final-frontend.onrender.com}/account/verify-email?token=${account.verificationToken}`;
+    const verifyUrl = `${process.env.FRONTEND_URL}/account/verify-email?token=${account.verificationToken}`;
 
-    const message = `
-        <p>Please click the link below to verify your email address:</p>
-        <p><a href="${verifyUrl}">${verifyUrl}</a></p>
-    `;
+const message = `
+    <p>Please click the link below to verify your email address:</p>
+    <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+`;
 
     await sendEmail({
         to: account.email,

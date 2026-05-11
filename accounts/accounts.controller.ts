@@ -5,13 +5,14 @@
  *   description: Account authentication and management
  */
 
-import express from 'express';
-const router = express.Router();
+import express, { Request, Response, NextFunction } from 'express';
 import Joi from 'joi';
 import validateRequest from '../_middleware/validate-request';
 import authorize from '../_middleware/authorize';
 import Role from '../_helpers/role';
 import accountService from './account.service';
+
+const router = express.Router();
 
 /**
  * @swagger
@@ -217,8 +218,8 @@ function refreshToken(req: Request, res: Response, next: NextFunction) {
     const ipAddress = req.ip;
 
     accountService.refreshToken({ token, ipAddress })
-        .then(({ refreshToken, ...account }) => {
-            setTokenCookie(res, refreshToken);
+        .then((account: any) => {
+            setTokenCookie(res, account.refreshToken);
             res.json(account);
         })
         .catch(next);
@@ -397,8 +398,8 @@ function setTokenCookie(res: Response, token: string) {
     const cookieOptions = {
         httpOnly: true,
         expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        sameSite: 'none' as const,
-        secure: true
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'strict' as const,
+        secure: process.env.NODE_ENV === 'production'
     };
 
     res.cookie('refreshToken', token, cookieOptions);
