@@ -392,12 +392,14 @@ function _delete(req: any, res: any, next: any) {
         .catch(next);
 }
 
-function setTokenCookie(res: any, token: any) {
+function setTokenCookie(res: any, token: string) {
+    const isProduction = process.env.NODE_ENV === 'production';
+
     const cookieOptions = {
         httpOnly: true,
-        secure: false,
-        sameSite: 'strict' as const,
-        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        sameSite: isProduction ? 'none' as const : 'lax' as const,
+        secure: isProduction
     };
 
     res.cookie('refreshToken', token, cookieOptions);

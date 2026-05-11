@@ -278,7 +278,7 @@ function basicDetails(account: any) {
     async function sendVerificationEmail(account: any, origin: any) {
     const frontendUrl = process.env.CORS_ORIGIN || 'http://localhost:4200';
 
-    const verifyUrl = `${process.env.FRONTEND_URL}/account/verify-email?token=${account.verificationToken}`;
+    const verifyUrl = `${process.env.https://angular-auth-frontend-final-frontend.onrender.com}/account/verify-email?token=${account.verificationToken}`;
 
     const message = `
         <p>Please click the link below to verify your email address:</p>
