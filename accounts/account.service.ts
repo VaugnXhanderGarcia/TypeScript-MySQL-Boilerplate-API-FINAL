@@ -43,12 +43,16 @@ async function authenticate({ email, password, ipAddress }: any) {
 }
 
 async function refreshToken({ token, ipAddress }: any) {
+    if (!token) {
+        throw 'Refresh token is required';
+    }
+
     const refreshToken = await getRefreshToken(token);
     const account = await refreshToken.getAccount();
 
     const newRefreshToken = generateRefreshToken(account, ipAddress);
 
-    refreshToken.revoked = Date.now();
+    refreshToken.revoked = new Date();
     refreshToken.revokedByIp = ipAddress;
     refreshToken.replacedByToken = newRefreshToken.token;
 
@@ -226,6 +230,10 @@ async function getAccount(id: number) {
 }
 
 async function getRefreshToken(token: string) {
+    if (!token) {
+        throw 'Refresh token is required';
+    }
+
     const refreshToken = await db.RefreshToken.findOne({ where: { token } });
 
     if (!refreshToken || !refreshToken.isActive) {
