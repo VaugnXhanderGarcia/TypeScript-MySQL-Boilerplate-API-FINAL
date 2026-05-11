@@ -212,11 +212,12 @@ function authenticate(req: any, res: any, next: any) {
         .catch(next);
 }
 
-function refreshToken(req: any, res: any, next: any) {
+function refreshToken(req: Request, res: Response, next: NextFunction) {
     const token = req.cookies.refreshToken;
     const ipAddress = req.ip;
+
     accountService.refreshToken({ token, ipAddress })
-        .then(({ refreshToken, ...account }: any) => {
+        .then(({ refreshToken, ...account }) => {
             setTokenCookie(res, refreshToken);
             res.json(account);
         })
@@ -392,7 +393,7 @@ function _delete(req: any, res: any, next: any) {
         .catch(next);
 }
 
-function setTokenCookie(res: any, token: string) {
+function setTokenCookie(res: Response, token: string) {
     const cookieOptions = {
         httpOnly: true,
         expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),

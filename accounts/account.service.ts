@@ -44,7 +44,7 @@ async function authenticate({ email, password, ipAddress }: any) {
 
 async function refreshToken({ token, ipAddress }: any) {
     if (!token) {
-        throw 'Refresh token is required';
+        throw 'Unauthorized';
     }
 
     const refreshToken = await getRefreshToken(token);
@@ -59,15 +59,12 @@ async function refreshToken({ token, ipAddress }: any) {
     await refreshToken.save();
     await newRefreshToken.save();
 
-    const jwtToken = generateJwtToken(account);
-
     return {
         ...basicDetails(account),
-        jwtToken,
+        jwtToken: generateJwtToken(account),
         refreshToken: newRefreshToken.token
     };
 }
-
 async function revokeToken({ token, ipAddress }: any) {
     const refreshToken = await getRefreshToken(token);
 
@@ -306,7 +303,7 @@ function basicDetails(account: any) {
 }
 
 async function sendVerificationEmail(account: any, origin: string) {
-    const verifyUrl = `${frontendUrl}/account/verify-email?token=${account.verificationToken}`;
+    const verifyUrl = `${process.env.https://angular-auth-frontend-final-frontend.onrender.com}/account/verify-email?token=${account.verificationToken}`;
 
     const message = `
         <p>Please click the link below to verify your email address:</p>
