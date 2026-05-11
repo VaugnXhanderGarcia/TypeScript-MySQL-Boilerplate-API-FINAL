@@ -1,6 +1,5 @@
 import mysql from 'mysql2/promise';
 import { Sequelize } from 'sequelize';
-import config from '../config.json';
 import AccountModel from '../accounts/account.model';
 import RefreshTokenModel from '../accounts/refresh-token.model';
 
@@ -16,15 +15,22 @@ export async function initialize() {
     const database = process.env.DB_NAME as string;
     const useSsl = process.env.DB_SSL === 'true';
 
+    if (!host || !user || !password || !database) {
+        throw new Error('Database environment variables are missing.');
+    }
+
+    // Test MySQL connection first
     const connection = await mysql.createConnection({
         host,
         port,
         user,
         password,
+        database,
         ssl: useSsl ? { rejectUnauthorized: false } : undefined
     });
 
-    await connection.query(`CREATE DATABASE IF NOT EXISTS \`${database}\`;`);
+    await connection.ping();
+    await connection.end();
 
     const sequelize = new Sequelize(database, user, password, {
         host,
