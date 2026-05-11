@@ -110,14 +110,16 @@ async function register(params: any, origin: any) {
         return;
     }
 
+    const isFirstAccount = (await db.Account.count()) === 0;
+
+    params.acceptTerms = params.acceptTerms === true || params.acceptTerms === 'true' || params.acceptTerms === 1;
+
     const account = new db.Account(params);
 
-    const isFirstAccount = (await db.Account.count()) === 0;
     account.role = isFirstAccount ? Role.Admin : Role.User;
+    account.passwordHash = await hash(params.password);
 
     account.verificationToken = randomTokenString();
-
-    account.passwordHash = await hash(params.password);
 
     await account.save();
 
@@ -188,10 +190,10 @@ async function create(params: any) {
 
     const account = new db.Account(params);
 
+    account.passwordHash = await hash(params.password);
     account.verified = new Date();
     account.verificationToken = null;
-
-    account.passwordHash = await hash(params.password);
+    account.acceptTerms = true;
 
     await account.save();
 
