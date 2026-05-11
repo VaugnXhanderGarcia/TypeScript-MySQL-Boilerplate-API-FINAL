@@ -20,8 +20,6 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use(cookieParser());
@@ -31,8 +29,24 @@ app.use(cors({
     credentials: true
 }));
 
+// Homepage / health check route
+app.get('/', (req, res) => {
+    res.status(200).json({
+        message: 'Angular Auth Node MySQL API is running',
+        status: 'OK',
+        apiDocs: '/api-docs',
+        accountsEndpoint: '/accounts',
+        environment: process.env.NODE_ENV || 'development'
+    });
+});
+
+// Swagger API documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+// API routes
 app.use('/accounts', accountsController);
 
+// Global error handler
 app.use(errorHandler);
 
 const port = process.env.PORT || 4000;
