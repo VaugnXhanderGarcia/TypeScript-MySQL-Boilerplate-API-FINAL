@@ -26,7 +26,7 @@ export default {
 async function authenticate({ email, password, ipAddress }: any) {
     const account = await db.Account.scope('withHash').findOne({ where: { email } });
 
-    if (!account || !account.verified || !(await bcrypt.compare(password, account.passwordHash))) {
+    if (!account || !account.isverified || !(await bcrypt.compare(password, account.passwordHash))) {
         throw 'Email or password is incorrect';
     }
 
@@ -75,32 +75,36 @@ async function revokeToken({ token, ipAddress }: any) {
 }
 
 async function register(params: any, origin: string) {
-    const existingAccount = await db.Account.findOne({ where: { email: params.email } });
+    params.email = String(params.email).trim().toLowerCase();
 
-    if (existingAccount) {
-        await sendAlreadyRegisteredEmail(params.email, origin);
-        return;
+    if (await db.Account.findOne({ where: { email: params.email } })) {
+        throw `Email "${params.email}" is already registered`;
     }
 
     const account = new db.Account(params);
 
-    account.role = 'User';
-    account.acceptTerms = !!params.acceptTerms;
-    account.verificationToken = randomTokenString();
+    const isFirstAccount = (await db.Account.count()) === 0;
+    account.role = isFirstAccount ? 'Admin' : 'User';
+
+    account.acceptTerms = params.acceptTerms === true || params.acceptTerms === 1 || params.acceptTerms === '1';
 
     account.passwordHash = await hash(params.password);
+
+    // important: do not auto verify
+    account.verified = null;
+    account.verificationToken = randomTokenString();
 
     await account.save();
 
     try {
-  await sendVerificationEmail(account, origin);
-} catch (err) {
-  console.error('Verification email failed:', err);
-}
+        await sendVerificationEmail(account, origin);
+    } catch (err) {
+        console.error('Verification email failed:', err);
+    }
 
-return {
-  message: 'Registration successful, please check your email for verification instructions'
-};
+    return {
+        message: 'Registration successful, please check your email for verification instructions'
+    };
 }
 
 async function verifyEmail({ token }: any) {
