@@ -400,5 +400,9 @@ function setTokenCookie(res: any, token: string) {
         sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const
     };
 
-    res.cookie('refreshToken', token, cookieOptions);
+    res.cookie('refreshToken', token, {
+    httpOnly: true,
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+    secure: process.env.NODE_ENV === 'production'
+});
 }
