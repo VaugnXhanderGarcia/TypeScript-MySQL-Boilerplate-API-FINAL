@@ -92,7 +92,15 @@ async function register(params: any, origin: string) {
 
     await account.save();
 
-    await sendVerificationEmail(account, origin);
+    try {
+  await sendVerificationEmail(account, origin);
+} catch (err) {
+  console.error('Verification email failed:', err);
+}
+
+return {
+  message: 'Registration successful, please check your email for verification instructions'
+};
 }
 
 async function verifyEmail({ token }: any) {

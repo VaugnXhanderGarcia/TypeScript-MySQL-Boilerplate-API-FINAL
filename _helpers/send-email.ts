@@ -1,27 +1,34 @@
 import nodemailer from 'nodemailer';
 
-export default async function sendEmail({ to, subject, html, from = process.env.EMAIL_FROM }: any) {
-    const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT),
-        auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS
-        }
-    });
+export async function sendEmail({
+  to,
+  subject,
+  html,
+  text
+}: {
+  to: string;
+  subject: string;
+  html?: string;
+  text?: string;
+}) {
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT),
+    secure: false,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS
+    },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000
+  });
 
-    const info = await transporter.sendMail({
-        from,
-        to,
-        subject,
-        html
-    });
-
-    console.log('Email sent:', info.messageId);
-
-    const previewUrl = nodemailer.getTestMessageUrl(info);
-
-    if (previewUrl) {
-        console.log('Preview URL:', previewUrl);
-    }
+  await transporter.sendMail({
+    from: process.env.EMAIL_FROM,
+    to,
+    subject,
+    html,
+    text
+  });
 }
