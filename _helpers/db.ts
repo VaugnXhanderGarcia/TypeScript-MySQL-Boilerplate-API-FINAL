@@ -16,17 +16,21 @@ export async function initialize() {
     const useSsl = process.env.DB_SSL === 'true';
 
     if (!host || !user || !password || !database) {
-        throw new Error('Database environment variables are missing.');
+        throw new Error('Missing database environment variables');
     }
 
-    // Test MySQL connection first
+    // Test connection only
     const connection = await mysql.createConnection({
         host,
         port,
         user,
         password,
         database,
-        ssl: useSsl ? { rejectUnauthorized: false } : undefined
+        ssl: useSsl
+            ? {
+                  rejectUnauthorized: false
+              }
+            : undefined
     });
 
     await connection.ping();
@@ -39,10 +43,10 @@ export async function initialize() {
         logging: console.log,
         dialectOptions: useSsl
             ? {
-                ssl: {
-                    rejectUnauthorized: false
-                }
-            }
+                  ssl: {
+                      rejectUnauthorized: false
+                  }
+              }
             : {}
     });
 
