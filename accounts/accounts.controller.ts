@@ -232,21 +232,25 @@ function revokeTokenSchema(req: any, res: any, next: any) {
     validateRequest(req, next, schema);
 }
 
-function revokeToken(req: any, res: any, next: any) {
-    const token = req.body.token || req.cookies.refreshToken;
-    const ipAddress = req.ip;
+function revokeToken(req: Request, res: Response, next: NextFunction) {
+    const token = req.cookies.refreshToken || req.body.token;
 
-    if (!token) return res.status(400).json({ message: 'Token is required' });
-
-    if (!req.user.ownsToken(token) && req.user.role !== Role.Admin) {
-        return res.status(401).json({ message: 'Unauthorized' });
+    if (!token) {
+        return res.status(400).json({ message: 'Token is required' });
     }
 
-    accountService.revokeToken({ token, ipAddress })
-        .then(() => res.json({ message: 'Token revoked' }))
+    accountService.revokeToken({ token, ipAddress: req.ip })
+        .then(() => {
+            res.clearCookie('refreshToken', {
+                httpOnly: true,
+                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+                secure: process.env.NODE_ENV === 'production'
+            });
+
+            res.json({ message: 'Token revoked' });
+        })
         .catch(next);
 }
-
 function registerSchema(req: any, res: any, next: any) {
     const schema = Joi.object({
         title: Joi.string().required(),
