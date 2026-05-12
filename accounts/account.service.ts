@@ -24,9 +24,23 @@ export default {
 };
 
 async function authenticate({ email, password, ipAddress }: any) {
-    const account = await db.Account.scope('withHash').findOne({ where: { email } });
+    email = String(email).trim().toLowerCase();
 
-    if (!account || !account.isverified || !(await bcrypt.compare(password, account.passwordHash))) {
+    const account = await db.Account.scope('withHash').findOne({
+        where: { email }
+    });
+
+    if (!account) {
+        throw 'Email or password is incorrect';
+    }
+
+    if (!account.verified) {
+        throw 'Email is not verified';
+    }
+
+    const passwordValid = await bcrypt.compare(password, account.passwordHash);
+
+    if (!passwordValid) {
         throw 'Email or password is incorrect';
     }
 
@@ -259,7 +273,7 @@ async function hash(password: string) {
 function generateJwtToken(account: any) {
     return jwt.sign(
         { sub: account.id, id: account.id, role: account.role },
-        process.env.JWT_SECRET as string,
+        jwtSecret,
         { expiresIn: '15m' }
     );
 }
