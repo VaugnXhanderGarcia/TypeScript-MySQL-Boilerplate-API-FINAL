@@ -1,4 +1,3 @@
-import mysql from 'mysql2/promise';
 import { Sequelize } from 'sequelize';
 import AccountModel from '../accounts/account.model';
 import RefreshTokenModel from '../accounts/refresh-token.model';
@@ -8,55 +7,35 @@ const db: any = {};
 export default db;
 
 export async function initialize() {
-    const host = process.env.DB_HOST as string;
-    const port = Number(process.env.DB_PORT || 3306);
-    const user = process.env.DB_USER as string;
-    const password = process.env.DB_PASSWORD as string;
-    const database = process.env.DB_NAME as string;
-    const useSsl = process.env.DB_SSL === 'true';
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL is missing in .env');
+  }
 
-    if (!host || !user || !password || !database) {
-        throw new Error('Missing database environment variables');
+  const sequelize = new Sequelize(process.env.DATABASE_URL, {
+    dialect: 'postgres',
+    logging: console.log,
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false
+      }
     }
+  });
 
-    // Test connection only
-    const connection = await mysql.createConnection({
-        host,
-        port,
-        user,
-        password,
-        database,
-        ssl: useSsl
-            ? {
-                  rejectUnauthorized: false
-              }
-            : undefined
-    });
+  db.Account = AccountModel(sequelize);
+  db.RefreshToken = RefreshTokenModel(sequelize);
 
-    await connection.ping();
-    await connection.end();
+  db.Account.hasMany(db.RefreshToken, {
+    foreignKey: 'accountId',
+    onDelete: 'CASCADE'
+  });
 
-    const sequelize = new Sequelize(database, user, password, {
-        host,
-        port,
-        dialect: 'mysql',
-        logging: console.log,
-        dialectOptions: useSsl
-            ? {
-                  ssl: {
-                      rejectUnauthorized: false
-                  }
-              }
-            : {}
-    });
+  db.RefreshToken.belongsTo(db.Account, {
+    foreignKey: 'accountId'
+  });
 
-    db.Account = AccountModel(sequelize);
-    db.RefreshToken = RefreshTokenModel(sequelize);
+  await sequelize.authenticate();
+  await sequelize.sync({ alter: true });
 
-    db.Account.hasMany(db.RefreshToken, { onDelete: 'CASCADE' });
-    db.RefreshToken.belongsTo(db.Account);
-
-    await sequelize.sync({ alter: true });
-
-    console.log('Database connected and synced');
+  console.log('Supabase PostgreSQL connected and synced');
 }
