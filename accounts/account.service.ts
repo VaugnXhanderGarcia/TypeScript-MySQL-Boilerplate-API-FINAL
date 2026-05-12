@@ -95,42 +95,45 @@ async function revokeToken({ token, ipAddress }: any) {
 }
 
 async function register(params: any, origin: string) {
-    const email = String(params.email).trim().toLowerCase();
-
-    if (await db.Account.findOne({ where: { email } })) {
-        await sendAlreadyRegisteredEmail(email);
-        throw `Email "${email}" is already registered`;
+    // Check if email already exists
+    if (await db.Account.findOne({ where: { email: params.email } })) {
+        return {
+            message: 'Email already registered'
+        };
     }
 
+    // First account = Admin, verified immediately
+    // Next accounts = User, must verify email
     const accountCount = await db.Account.count();
-
     const isFirstAccount = accountCount === 0;
 
-    const account = new db.Account({
-        title: params.title,
-        firstName: params.firstName,
-        lastName: params.lastName,
-        email,
-        passwordHash: await hash(params.password),
-        acceptTerms:
-            params.acceptTerms === true ||
-            params.acceptTerms === 1 ||
-            params.acceptTerms === '1',
-        role: isFirstAccount ? 'Admin' : 'User',
-        verified: isFirstAccount ? new Date() : null,
-        verificationToken: isFirstAccount ? null : randomTokenString()
-    });
+    const account = new db.Account(params);
+
+    account.role = isFirstAccount ? 'Admin' : 'User';
+    account.acceptTerms = true;
+
+    // IMPORTANT: hash password before saving
+    account.passwordHash = await bcrypt.hash(params.password, 10);
+
+    if (isFirstAccount) {
+        account.verified = new Date();
+        account.verificationToken = null;
+    } else {
+        account.verified = null;
+        account.verificationToken = randomTokenString();
+    }
 
     await account.save();
 
+    // Send verification email only for normal users
     if (!isFirstAccount) {
         await sendVerificationEmail(account);
     }
 
     return {
         message: isFirstAccount
-            ? 'Registration successful. First account is Admin and already verified. You can now log in.'
-            : 'Registration successful. Please check your email for verification instructions.'
+            ? 'Registration successful. First account created as Admin. You can now log in.'
+            : 'Registration successful. Please check your email to verify your account.'
     };
 }
 

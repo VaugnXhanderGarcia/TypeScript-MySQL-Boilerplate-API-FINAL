@@ -202,29 +202,31 @@ function authenticateSchema(req: any, res: any, next: any) {
     validateRequest(req, next, schema);
 }
 
-function authenticate(req: any, res: any, next: any) {
-    const { email, password } = req.body;
-    const ipAddress = req.ip;
-    accountService.authenticate({ email, password, ipAddress })
-        .then(({ refreshToken, ...account }: any) => {
-            setTokenCookie(res, refreshToken);
-            res.json(account);
-        })
-        .catch(next);
+function authenticate(req: Request, res: Response, next: NextFunction) {
+    accountService.authenticate({
+        email: req.body.email,
+        password: req.body.password,
+        ipAddress: req.ip
+    })
+    .then((account: any) => {
+        setTokenCookie(res, account.refreshToken);
+        res.json(account);
+    })
+    .catch(next);
 }
-
 function refreshToken(req: Request, res: Response, next: NextFunction) {
     const token = req.cookies.refreshToken;
-    const ipAddress = req.ip;
 
-    accountService.refreshToken({ token, ipAddress })
-        .then((account: any) => {
-            setTokenCookie(res, account.refreshToken);
-            res.json(account);
-        })
-        .catch(next);
+    accountService.refreshToken({
+        token,
+        ipAddress: req.ip
+    })
+    .then((account: any) => {
+        setTokenCookie(res, account.refreshToken);
+        res.json(account);
+    })
+    .catch(next);
 }
-
 function revokeTokenSchema(req: any, res: any, next: any) {
     const schema = Joi.object({
         token: Joi.string().empty('')
@@ -399,13 +401,11 @@ function _delete(req: any, res: any, next: any) {
 }
 
 function setTokenCookie(res: Response, token: string) {
-    const isProduction = process.env.NODE_ENV === 'production';
-
     const cookieOptions = {
         httpOnly: true,
-        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        sameSite: isProduction ? 'none' as const : 'lax' as const,
-        secure: isProduction
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
+        secure: process.env.NODE_ENV === 'production',
+        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
     };
 
     res.cookie('refreshToken', token, cookieOptions);
