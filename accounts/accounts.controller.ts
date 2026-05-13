@@ -401,12 +401,12 @@
     }
 
     function setTokenCookie(res: Response, token: string) {
-    const cookieOptions = {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
-        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-    };
+  const cookieOptions = {
+    httpOnly: true,
+    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
+    secure: process.env.NODE_ENV === 'production'
+  };
 
-    res.cookie('refreshToken', token, cookieOptions);
+  res.cookie('refreshToken', token, cookieOptions);
 }

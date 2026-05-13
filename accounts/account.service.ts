@@ -27,18 +27,14 @@ export default {
 };
 
 async function authenticate({ email, password, ipAddress }: any) {
-    email = String(email).trim().toLowerCase();
-
-    const account = await db.Account.findOne({
-        where: { email }
-    });
+    const account = await db.Account.scope('withHash').findOne({ where: { email } });
 
     if (!account) {
-        throw 'Email or password is incorrect';
+        throw 'Account does not exist';
     }
 
     if (!account.verified) {
-        throw 'Email is not verified';
+        throw 'Email needs to be verified first';
     }
 
     const passwordValid = await bcrypt.compare(password, account.passwordHash);
@@ -48,7 +44,7 @@ async function authenticate({ email, password, ipAddress }: any) {
     }
 
     const jwtToken = generateJwtToken(account);
-    const refreshToken = generateRefreshToken(account, ipAddress);
+    const refreshToken = await generateRefreshToken(account, ipAddress);
 
     await refreshToken.save();
 
