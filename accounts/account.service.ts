@@ -360,17 +360,21 @@ function basicDetails(account: any) {
 }
 
 async function sendVerificationEmail(account: any) {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4200';
+
     const verifyUrl = `${frontendUrl}/account/verify-email?token=${account.verificationToken}`;
 
     const message = `
         <p>Please click the link below to verify your email address:</p>
-        <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+        <p>
+            <a href="${verifyUrl}">Verify Email</a>
+        </p>
     `;
 
     await sendEmail({
         to: account.email,
-        subject: 'Sign-up Verification API - Verify Email',
-        html: `<h4>Verify Email</h4>${message}`
+        subject: 'Verify Email',
+        html: message
     });
 }
 
