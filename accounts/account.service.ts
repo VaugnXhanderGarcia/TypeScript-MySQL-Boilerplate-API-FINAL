@@ -88,51 +88,37 @@ async function revokeToken({ token, ipAddress }: any) {
     await refreshToken.save();
 }
 
-async function register(params: any, origin?: string) {
-    const existingAccount = await db.Account.findOne({
-        where: { email: params.email }
-    });
+async function register(params: any, origin: string) {
+  if (await db.Account.findOne({ where: { email: params.email } })) {
+    throw 'Email "' + params.email + '" is already registered';
+  }
 
-    if (existingAccount) {
-        throw `Email "${params.email}" is already registered`;
+  const accountCount = await db.Account.count();
+  const isFirstAccount = accountCount === 0;
+
+  const account = new db.Account(params);
+
+  account.role = isFirstAccount ? 'Admin' : 'User';
+  account.verified = isFirstAccount ? new Date() : null;
+  account.verificationToken = isFirstAccount ? null : randomTokenString();
+
+  account.passwordHash = await hash(params.password);
+
+  await account.save();
+
+  if (!isFirstAccount) {
+    try {
+      await sendVerificationEmail(account, origin);
+    } catch (err) {
+      console.error('Verification email failed:', err);
     }
+  }
 
-    const accountCount = await db.Account.count();
-    const isFirstAccount = accountCount === 0;
-
-    const account = new db.Account(params);
-
-    account.role = isFirstAccount ? 'Admin' : 'User';
-    account.passwordHash = await hash(params.password);
-
-    if (isFirstAccount) {
-        account.verified = new Date();
-        account.verificationToken = null;
-    } else {
-        account.verified = null;
-        account.verificationToken = randomTokenString();
-    }
-
-    await account.save();
-
-    if (!isFirstAccount) {
-        try {
-            await sendVerificationEmail(account, origin);
-        } catch (err) {
-            console.error('EMAIL SEND FAILED:', err);
-
-            return {
-                message:
-                    'Registration successful, but verification email was not sent. Please check SMTP settings or verify through Swagger.'
-            };
-        }
-    }
-
-    return {
-        message: isFirstAccount
-            ? 'Admin account created successfully. You can now log in.'
-            : 'Registration successful. Please check your Ethereal inbox to verify your email.'
-    };
+  return {
+    message: isFirstAccount
+      ? 'Registration successful. First account is Admin and already verified.'
+      : 'Registration successful. Please check your email to verify your account.'
+  };
 }
 
 async function verifyEmail({ token }: any) {
