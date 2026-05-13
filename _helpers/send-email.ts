@@ -1,23 +1,26 @@
 import nodemailer from 'nodemailer';
 
-export async function sendEmail({
-    to,
-    subject,
-    html,
-    from = process.env.EMAIL_FROM || 'Admin <admin@test.com>'
-}: {
-    to: string;
-    subject: string;
-    html: string;
-    from?: string;
-}) {
+export default sendEmail;
+
+async function sendEmail({ to, subject, html }: any) {
+    const host = process.env.SMTP_HOST;
+    const port = Number(process.env.SMTP_PORT || 587);
+    const secure = process.env.SMTP_SECURE === 'true';
+    const user = process.env.SMTP_USER;
+    const pass = process.env.SMTP_PASS;
+    const from = process.env.EMAIL_FROM || user;
+
+    if (!host || !user || !pass) {
+        throw new Error('SMTP settings are missing. Check SMTP_HOST, SMTP_USER, and SMTP_PASS.');
+    }
+
     const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT || 587),
-        secure: false,
+        host,
+        port,
+        secure,
         auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS
+            user,
+            pass
         }
     });
 
@@ -34,6 +37,4 @@ export async function sendEmail({
     if (previewUrl) {
         console.log('Ethereal preview URL:', previewUrl);
     }
-
-    return info;
 }
