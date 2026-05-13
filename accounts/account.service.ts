@@ -338,7 +338,7 @@ async function sendVerificationEmail(account: any, origin?: string) {
         origin ||
         'http://localhost:4200';
 
-    const verifyUrl = `${frontendUrl}/account/verify-email?token=${account.verificationToken}`;
+    const verifyUrl = `${process.env.FRONTEND_URL}/account/verify-email?token=${account.verificationToken}`;
 
     const message = `
         <h3>Verify your email</h3>
