@@ -27,39 +27,50 @@ app.use(cookieParser());
 
 
 const allowedOrigins = [
-  'http://localhost:4200',
-  'https://angular-auth-frontend-final-frontend.onrender.com',
-  'https://angular-auth-final.onrender.com'
+    'http://localhost:4200',
+    'https://angular-auth-frontend-final-frontend.onrender.com',
+    'https://angular-auth-final.onrender.com'
 ];
 
 app.use(cors({
-  origin: (origin, callback) => {
-    // allow Swagger, Postman, server-to-server, and same-origin requests
-    if (!origin) return callback(null, true);
+    origin: (origin, callback) => {
+        if (!origin) {
+            return callback(null, true);
+        }
 
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
 
-    return callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true
+        return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true
 }));
 
 app.options(/.*/, cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
+    origin: (origin, callback) => {
+        if (!origin) {
+            return callback(null, true);
+        }
 
-    return callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true
 }));
 
 // Swagger API documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
+app.get('/', (req, res) => {
+    res.json({
+        message: 'Angular Auth API is running',
+        docs: '/api-docs'
+    });
+});
 // API routes
 app.use('/accounts', accountsController);
 

@@ -89,37 +89,50 @@ async function revokeToken({ token, ipAddress }: any) {
 }
 
 async function register(params: any, origin?: string) {
-  if (await db.Account.findOne({ where: { email: params.email } })) {
-    throw 'Email "' + params.email + '" is already registered';
-  }
+    const existingAccount = await db.Account.findOne({
+        where: { email: params.email }
+    });
 
-  const accountCount = await db.Account.count();
-  const isFirstAccount = accountCount === 0;
+    if (existingAccount) {
+        throw `Email "${params.email}" is already registered`;
+    }
 
-  const account = new db.Account(params);
+    const accountCount = await db.Account.count();
+    const isFirstAccount = accountCount === 0;
 
-  account.role = isFirstAccount ? 'Admin' : 'User';
-  account.passwordHash = await hash(params.password);
+    const account = new db.Account(params);
 
-  if (isFirstAccount) {
-    account.verified = new Date();
-    account.verificationToken = null;
-  } else {
-    account.verified = null;
-    account.verificationToken = randomTokenString();
-  }
+    account.role = isFirstAccount ? 'Admin' : 'User';
+    account.passwordHash = await hash(params.password);
 
-  await account.save();
+    if (isFirstAccount) {
+        account.verified = new Date();
+        account.verificationToken = null;
+    } else {
+        account.verified = null;
+        account.verificationToken = randomTokenString();
+    }
 
-  if (!isFirstAccount) {
-    await sendVerificationEmail(account, origin);
-  }
+    await account.save();
 
-  return {
-    message: isFirstAccount
-      ? 'Registration successful. Admin account created. You can now log in.'
-      : 'Registration successful. Please check your email to verify your account.'
-  };
+    if (!isFirstAccount) {
+        try {
+            await sendVerificationEmail(account, origin);
+        } catch (err) {
+            console.error('EMAIL SEND FAILED:', err);
+
+            return {
+                message:
+                    'Registration successful, but verification email was not sent. Please check SMTP settings or verify through Swagger.'
+            };
+        }
+    }
+
+    return {
+        message: isFirstAccount
+            ? 'Admin account created successfully. You can now log in.'
+            : 'Registration successful. Please check your Ethereal inbox to verify your email.'
+    };
 }
 
 async function verifyEmail({ token }: any) {
@@ -334,24 +347,29 @@ function basicDetails(account: any) {
 }
 
 async function sendVerificationEmail(account: any, origin?: string) {
-  const frontendUrl = process.env.FRONTEND_URL || origin || 'http://localhost:4200';
+    const frontendUrl =
+        process.env.FRONTEND_URL ||
+        origin ||
+        'http://localhost:4200';
 
-  const verifyUrl = `${frontendUrl}/account/verify-email?token=${account.verificationToken}`;
+    const verifyUrl = `${frontendUrl}/account/verify-email?token=${account.verificationToken}`;
 
-  const message = `
-    <h3>Verify your email</h3>
-    <p>Thank you for registering.</p>
-    <p>Please click the link below to verify your email address:</p>
-    <p>
-      <a href="${verifyUrl}">Verify Email</a>
-    </p>
-  `;
+    const message = `
+        <h3>Verify your email</h3>
+        <p>Thank you for registering.</p>
+        <p>Please click the link below to verify your account:</p>
+        <p>
+            <a href="${verifyUrl}" target="_blank">Verify Email</a>
+        </p>
+        <p>If the button does not work, copy this link:</p>
+        <p>${verifyUrl}</p>
+    `;
 
-  await sendEmail({
-    to: account.email,
-    subject: 'Verify Email',
-    html: message
-  });
+    await sendEmail({
+        to: account.email,
+        subject: 'Verify Email',
+        html: message
+    });
 }
 async function sendAlreadyRegisteredEmail(email: string) {
     const message = `
