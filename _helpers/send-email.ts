@@ -1,6 +1,16 @@
 import nodemailer from 'nodemailer';
 
-export async function sendEmail({ to, subject, html, from }: any) {
+export async function sendEmail({
+  to,
+  subject,
+  html,
+  from = process.env.EMAIL_FROM || 'Admin <admin@test.com>'
+}: {
+  to: string;
+  subject: string;
+  html: string;
+  from?: string;
+}) {
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT),
@@ -12,13 +22,13 @@ export async function sendEmail({ to, subject, html, from }: any) {
   });
 
   const info = await transporter.sendMail({
-    from: from || process.env.EMAIL_FROM,
+    from,
     to,
     subject,
     html
   });
 
-  console.log('Email sent:', info.messageId);
+  console.log('Verification email sent:', info.messageId);
   console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
 
   return info;

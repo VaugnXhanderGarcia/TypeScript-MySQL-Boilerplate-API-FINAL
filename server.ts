@@ -32,8 +32,9 @@ const allowedOrigins = [
   'https://angular-auth-final.onrender.com'
 ];
 
-const corsOptions = {
-  origin: function (origin: string | undefined, callback: Function) {
+app.use(cors({
+  origin: (origin, callback) => {
+    // allow Swagger, Postman, server-to-server, and same-origin requests
     if (!origin) return callback(null, true);
 
     if (allowedOrigins.includes(origin)) {
@@ -43,20 +44,18 @@ const corsOptions = {
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true
-};
+}));
 
-app.use(cors(corsOptions));
-app.options(/.*/, cors(corsOptions));
-// Homepage / health check route
-app.get('/', (req, res) => {
-    res.status(200).json({
-        message: 'Angular Auth Node MySQL API is running',
-        status: 'OK',
-        apiDocs: '/api-docs',
-        accountsEndpoint: '/accounts',
-        environment: process.env.NODE_ENV || 'development'
-    });
-});
+app.options(/.*/, cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true
+}));
 
 // Swagger API documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

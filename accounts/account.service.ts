@@ -27,28 +27,30 @@ export default {
 };
 
 async function authenticate({ email, password, ipAddress }: any) {
-    const account = await db.Account.scope('withHash').findOne({
-        where: { email }
-    });
+  const account = await db.Account.scope('withHash').findOne({ where: { email } });
 
-    if (!account || !(await bcrypt.compare(password, account.passwordHash))) {
-        throw 'Email or password is incorrect';
-    }
+  if (!account) {
+    throw 'Account does not exist';
+  }
 
-    if (!account.verified) {
-        throw 'Please verify your email before logging in';
-    }
+  if (!account.verified) {
+    throw 'Email needs to be verified first';
+  }
 
-    const jwtToken = generateJwtToken(account);
-    const refreshToken = generateRefreshToken(account, ipAddress);
+  if (!(await bcrypt.compare(password, account.passwordHash))) {
+    throw 'Email or password is incorrect';
+  }
 
-    await refreshToken.save();
+  const jwtToken = generateJwtToken(account);
+  const refreshToken = generateRefreshToken(account, ipAddress);
 
-    return {
-        ...basicDetails(account),
-        jwtToken,
-        refreshToken: refreshToken.token
-    };
+  await refreshToken.save();
+
+  return {
+    ...basicDetails(account),
+    jwtToken,
+    refreshToken: refreshToken.token
+  };
 }
 
 async function refreshToken({ token, ipAddress }: any) {
@@ -86,7 +88,7 @@ async function revokeToken({ token, ipAddress }: any) {
     await refreshToken.save();
 }
 
-async function register(params: any, origin: string) {
+async function register(params: any, origin?: string) {
   if (await db.Account.findOne({ where: { email: params.email } })) {
     throw 'Email "' + params.email + '" is already registered';
   }
@@ -97,11 +99,7 @@ async function register(params: any, origin: string) {
   const account = new db.Account(params);
 
   account.role = isFirstAccount ? 'Admin' : 'User';
-  account.created = new Date();
-
-  if (params.password) {
-    account.passwordHash = await hash(params.password);
-  }
+  account.passwordHash = await hash(params.password);
 
   if (isFirstAccount) {
     account.verified = new Date();
@@ -113,15 +111,15 @@ async function register(params: any, origin: string) {
 
   await account.save();
 
-try {
-  await sendVerificationEmail(account);
-} catch (error) {
-  console.error('Verification email failed:', error);
-}
+  if (!isFirstAccount) {
+    await sendVerificationEmail(account, origin);
+  }
 
-return {
-  message: 'Registration successful. Please check your email for verification instructions.'
-};
+  return {
+    message: isFirstAccount
+      ? 'Registration successful. Admin account created. You can now log in.'
+      : 'Registration successful. Please check your email to verify your account.'
+  };
 }
 
 async function verifyEmail({ token }: any) {
@@ -335,12 +333,18 @@ function basicDetails(account: any) {
     return { id, title, firstName, lastName, email, role, created, updated, isVerified };
 }
 
-async function sendVerificationEmail(account: any) {
-  const verifyUrl = `${process.env.FRONTEND_URL}/account/verify-email?token=${account.verificationToken}`;
+async function sendVerificationEmail(account: any, origin?: string) {
+  const frontendUrl = process.env.FRONTEND_URL || origin || 'http://localhost:4200';
+
+  const verifyUrl = `${frontendUrl}/account/verify-email?token=${account.verificationToken}`;
 
   const message = `
-    <p>Please click the link below to verify your email:</p>
-    <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+    <h3>Verify your email</h3>
+    <p>Thank you for registering.</p>
+    <p>Please click the link below to verify your email address:</p>
+    <p>
+      <a href="${verifyUrl}">Verify Email</a>
+    </p>
   `;
 
   await sendEmail({
