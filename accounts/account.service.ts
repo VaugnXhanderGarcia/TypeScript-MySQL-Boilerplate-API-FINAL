@@ -27,24 +27,20 @@ export default {
 };
 
 async function authenticate({ email, password, ipAddress }: any) {
-    const account = await db.Account.scope('withHash').findOne({ where: { email } });
+    const account = await db.Account.scope('withHash').findOne({
+        where: { email }
+    });
 
-    if (!account) {
-        throw 'Account does not exist';
-    }
-
-    if (!account.verified) {
-        throw 'Email needs to be verified first';
-    }
-
-    const passwordValid = await bcrypt.compare(password, account.passwordHash);
-
-    if (!passwordValid) {
+    if (!account || !(await bcrypt.compare(password, account.passwordHash))) {
         throw 'Email or password is incorrect';
     }
 
+    if (!account.verified) {
+        throw 'Please verify your email before logging in';
+    }
+
     const jwtToken = generateJwtToken(account);
-    const refreshToken = await generateRefreshToken(account, ipAddress);
+    const refreshToken = generateRefreshToken(account, ipAddress);
 
     await refreshToken.save();
 
@@ -91,25 +87,18 @@ async function revokeToken({ token, ipAddress }: any) {
 }
 
 async function register(params: any, origin: string) {
-    // Check if email already exists
     if (await db.Account.findOne({ where: { email: params.email } })) {
         return {
-            message: 'Email already registered'
+            message: 'Registration successful. Please check your email to verify your account.'
         };
     }
 
-    // First account = Admin, verified immediately
-    // Next accounts = User, must verify email
     const accountCount = await db.Account.count();
     const isFirstAccount = accountCount === 0;
 
     const account = new db.Account(params);
 
     account.role = isFirstAccount ? 'Admin' : 'User';
-    account.acceptTerms = true;
-
-    // IMPORTANT: hash password before saving
-    account.passwordHash = await bcrypt.hash(params.password, 10);
 
     if (isFirstAccount) {
         account.verified = new Date();
@@ -119,16 +108,17 @@ async function register(params: any, origin: string) {
         account.verificationToken = randomTokenString();
     }
 
+    account.passwordHash = await hash(params.password);
+
     await account.save();
 
-    // Send verification email only for normal users
     if (!isFirstAccount) {
-        await sendVerificationEmail(account);
+        await sendVerificationEmail(account, origin);
     }
 
     return {
         message: isFirstAccount
-            ? 'Registration successful. First account created as Admin. You can now log in.'
+            ? 'Registration successful. Admin account created. You can now log in.'
             : 'Registration successful. Please check your email to verify your account.'
     };
 }
@@ -344,25 +334,29 @@ function basicDetails(account: any) {
     return { id, title, firstName, lastName, email, role, created, updated, isVerified };
 }
 
-async function sendVerificationEmail(account: any) {
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4200';
+async function sendVerificationEmail(account: any, origin: string) {
+    let message: string;
 
-    const verifyUrl = `${frontendUrl}/account/verify-email?token=${account.verificationToken}`;
+    if (origin) {
+        const verifyUrl = `${origin}/account/verify-email?token=${account.verificationToken}`;
 
-    const message = `
-        <p>Please click the link below to verify your email address:</p>
-        <p>
-            <a href="${verifyUrl}">Verify Email</a>
-        </p>
-    `;
+        message = `
+            <p>Please click the link below to verify your email address:</p>
+            <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+        `;
+    } else {
+        message = `
+            <p>Please use the token below to verify your email address:</p>
+            <p><code>${account.verificationToken}</code></p>
+        `;
+    }
 
     await sendEmail({
         to: account.email,
-        subject: 'Verify Email',
-        html: message
+        subject: 'Sign-up Verification API - Verify Email',
+        html: `<h4>Verify Email</h4>${message}`
     });
 }
-
 async function sendAlreadyRegisteredEmail(email: string) {
     const message = `
         <p>Your email <strong>${email}</strong> is already registered.</p>
