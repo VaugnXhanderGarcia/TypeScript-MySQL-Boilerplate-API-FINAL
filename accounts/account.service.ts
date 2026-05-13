@@ -87,40 +87,45 @@ async function revokeToken({ token, ipAddress }: any) {
 }
 
 async function register(params: any, origin: string) {
-    if (await db.Account.findOne({ where: { email: params.email } })) {
-        return {
-            message: 'Registration successful. Please check your email to verify your account.'
-        };
-    }
+  if (await db.Account.findOne({ where: { email: params.email } })) {
+    throw 'Email "' + params.email + '" is already registered';
+  }
 
-    const accountCount = await db.Account.count();
-    const isFirstAccount = accountCount === 0;
+  const accountCount = await db.Account.count();
+  const isFirstAccount = accountCount === 0;
 
-    const account = new db.Account(params);
+  const account = new db.Account(params);
 
-    account.role = isFirstAccount ? 'Admin' : 'User';
+  account.role = isFirstAccount ? 'Admin' : 'User';
+  account.created = new Date();
 
-    if (isFirstAccount) {
-        account.verified = new Date();
-        account.verificationToken = null;
-    } else {
-        account.verified = null;
-        account.verificationToken = randomTokenString();
-    }
-
+  if (params.password) {
     account.passwordHash = await hash(params.password);
+  }
 
-    await account.save();
+  if (isFirstAccount) {
+    account.verified = new Date();
+    account.verificationToken = null;
+  } else {
+    account.verified = null;
+    account.verificationToken = randomTokenString();
+  }
 
-    if (!isFirstAccount) {
-        await sendVerificationEmail(account, origin);
+  await account.save();
+
+  if (!isFirstAccount) {
+    try {
+      await sendVerificationEmail(account, origin);
+    } catch (error) {
+      console.error('Verification email failed:', error);
     }
+  }
 
-    return {
-        message: isFirstAccount
-            ? 'Registration successful. Admin account created. You can now log in.'
-            : 'Registration successful. Please check your email to verify your account.'
-    };
+  return {
+    message: isFirstAccount
+      ? 'Registration successful. First account is Admin and already verified.'
+      : 'Registration successful. Please check Ethereal to verify your email.'
+  };
 }
 
 async function verifyEmail({ token }: any) {
@@ -335,27 +340,27 @@ function basicDetails(account: any) {
 }
 
 async function sendVerificationEmail(account: any, origin: string) {
-    let message: string;
+  let message;
 
-    if (origin) {
-        const verifyUrl = `${origin}/account/verify-email?token=${account.verificationToken}`;
+  if (origin) {
+    const verifyUrl = `${origin}/account/verify-email?token=${account.verificationToken}`;
 
-        message = `
-            <p>Please click the link below to verify your email address:</p>
-            <p><a href="${verifyUrl}">${verifyUrl}</a></p>
-        `;
-    } else {
-        message = `
-            <p>Please use the token below to verify your email address:</p>
-            <p><code>${account.verificationToken}</code></p>
-        `;
-    }
+    message = `
+      <p>Please click the link below to verify your email:</p>
+      <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+    `;
+  } else {
+    message = `
+      <p>Please use the token below to verify your email:</p>
+      <p><code>${account.verificationToken}</code></p>
+    `;
+  }
 
-    await sendEmail({
-        to: account.email,
-        subject: 'Sign-up Verification API - Verify Email',
-        html: `<h4>Verify Email</h4>${message}`
-    });
+  await sendEmail({
+    to: account.email,
+    subject: 'Verify Email',
+    html: `<h4>Verify Email</h4>${message}`
+  });
 }
 async function sendAlreadyRegisteredEmail(email: string) {
     const message = `

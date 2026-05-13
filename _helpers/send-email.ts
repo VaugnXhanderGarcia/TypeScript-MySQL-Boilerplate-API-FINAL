@@ -4,12 +4,12 @@ export async function sendEmail({
   to,
   subject,
   html,
-  text
+  from = process.env.EMAIL_FROM
 }: {
   to: string;
   subject: string;
-  html?: string;
-  text?: string;
+  html: string;
+  from?: string;
 }) {
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
@@ -18,17 +18,16 @@ export async function sendEmail({
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS
-    },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000
+    }
   });
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM,
+  const info = await transporter.sendMail({
+    from,
     to,
     subject,
-    html,
-    text
+    html
   });
+
+  console.log('Email sent:', info.messageId);
+  console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
 }
