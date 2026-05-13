@@ -1,19 +1,9 @@
 import nodemailer from 'nodemailer';
 
-export async function sendEmail({
-  to,
-  subject,
-  html,
-  from = process.env.EMAIL_FROM
-}: {
-  to: string;
-  subject: string;
-  html: string;
-  from?: string;
-}) {
+export async function sendEmail({ to, subject, html, from }: any) {
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT || 587),
+    port: Number(process.env.SMTP_PORT),
     secure: false,
     auth: {
       user: process.env.SMTP_USER,
@@ -22,7 +12,7 @@ export async function sendEmail({
   });
 
   const info = await transporter.sendMail({
-    from,
+    from: from || process.env.EMAIL_FROM,
     to,
     subject,
     html
@@ -30,4 +20,6 @@ export async function sendEmail({
 
   console.log('Email sent:', info.messageId);
   console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
+
+  return info;
 }

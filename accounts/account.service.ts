@@ -113,19 +113,15 @@ async function register(params: any, origin: string) {
 
   await account.save();
 
-  if (!isFirstAccount) {
-    try {
-      await sendVerificationEmail(account, origin);
-    } catch (error) {
-      console.error('Verification email failed:', error);
-    }
-  }
+try {
+  await sendVerificationEmail(account);
+} catch (error) {
+  console.error('Verification email failed:', error);
+}
 
-  return {
-    message: isFirstAccount
-      ? 'Registration successful. First account is Admin and already verified.'
-      : 'Registration successful. Please check Ethereal to verify your email.'
-  };
+return {
+  message: 'Registration successful. Please check your email for verification instructions.'
+};
 }
 
 async function verifyEmail({ token }: any) {
@@ -339,27 +335,18 @@ function basicDetails(account: any) {
     return { id, title, firstName, lastName, email, role, created, updated, isVerified };
 }
 
-async function sendVerificationEmail(account: any, origin: string) {
-  let message;
+async function sendVerificationEmail(account: any) {
+  const verifyUrl = `${process.env.FRONTEND_URL}/account/verify-email?token=${account.verificationToken}`;
 
-  if (origin) {
-    const verifyUrl = `${origin}/account/verify-email?token=${account.verificationToken}`;
-
-    message = `
-      <p>Please click the link below to verify your email:</p>
-      <p><a href="${verifyUrl}">${verifyUrl}</a></p>
-    `;
-  } else {
-    message = `
-      <p>Please use the token below to verify your email:</p>
-      <p><code>${account.verificationToken}</code></p>
-    `;
-  }
+  const message = `
+    <p>Please click the link below to verify your email:</p>
+    <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+  `;
 
   await sendEmail({
     to: account.email,
     subject: 'Verify Email',
-    html: `<h4>Verify Email</h4>${message}`
+    html: message
   });
 }
 async function sendAlreadyRegisteredEmail(email: string) {
