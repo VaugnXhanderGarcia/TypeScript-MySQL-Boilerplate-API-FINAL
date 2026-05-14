@@ -23,29 +23,22 @@ app.use((req, res, next) => {
 });
 
 // Allowed frontend/backend origins
-const allowedOrigins = [
-  'http://localhost:4200',
-  'https://angular-auth-frontend-final-frontend.onrender.com',
-  'https://angular-auth-final.onrender.com'
-];
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+  : [
+      'http://localhost:4200',
+      'https://angular-auth-frontend-final-frontend.onrender.com'
+    ];
 
-const corsOptions: CorsOptions = {
-  origin: (origin, callback) => {
-    // Allow requests with no origin, like Swagger, Postman, curl
-    if (!origin) {
-      return callback(null, true);
+const corsOptions = {
+  origin: (origin: string | undefined, callback: any) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
     }
-
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-
-    console.log('Blocked by CORS:', origin);
-    return callback(new Error('Not allowed by CORS'));
   },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  credentials: true
 };
 
 app.use(cors(corsOptions));
