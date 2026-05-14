@@ -85,3 +85,10 @@ initialize()
     console.error(err);
     process.exit(1);
   });
+
+  /*DB_HOST=your-supabase-host.supabase.co
+    DB_PORT=5432
+    DB_USER=postgres
+    DB_PASSWORD=nashnashvaugn09
+    DB_NAME=postgres
+    DB_SSL=true*/

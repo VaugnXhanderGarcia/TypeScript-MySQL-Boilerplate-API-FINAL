@@ -60,22 +60,22 @@ function model(sequelize: Sequelize) {
     };
 
     const options = {
-        tableName: 'accounts',
-        freezeTableName: true,
-        timestamps: false,
-        defaultScope: {
+    tableName: 'accounts',
+    freezeTableName: true,
+    timestamps: false,
+    defaultScope: {
+        attributes: {
+            exclude: ['passwordHash']
+        }
+    },
+            scopes: {
+        withHash: {
             attributes: {
-                exclude: ['passwordHash']
-            }
-        },
-        scopes: {
-            withHash: {
-                attributes: {
-                    include: ['passwordHash']
-                }
+                include: ['passwordHash']
             }
         }
-    };
+    }
+};
 
     return sequelize.define('Account', attributes, options);
 }

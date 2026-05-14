@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import db from '../_helpers/db';
 import sendEmail from '../_helpers/send-email';
+import Role from '../_helpers/role';
 
 const jwtSecret = process.env.JWT_SECRET || 'uc_auth_secret_123456';
 const frontendUrl =
@@ -27,30 +28,34 @@ export default {
 };
 
 async function authenticate({ email, password, ipAddress }: any) {
-  const account = await db.Account.scope('withHash').findOne({ where: { email } });
+    const account = await db.Account.scope('withHash').findOne({
+        where: { email }
+    });
 
-  if (!account) {
-    throw 'Account does not exist';
-  }
+    if (!account) {
+        throw 'Email or password is incorrect';
+    }
 
-  if (!account.verified) {
-    throw 'Email needs to be verified first';
-  }
+    if (!account.verified) {
+        throw 'Please verify your email before logging in';
+    }
 
-  if (!(await bcrypt.compare(password, account.passwordHash))) {
-    throw 'Email or password is incorrect';
-  }
+    const passwordValid = await bcrypt.compare(password, account.passwordHash);
 
-  const jwtToken = generateJwtToken(account);
-  const refreshToken = generateRefreshToken(account, ipAddress);
+    if (!passwordValid) {
+        throw 'Email or password is incorrect';
+    }
 
-  await refreshToken.save();
+    const jwtToken = generateJwtToken(account);
+    const refreshToken = generateRefreshToken(account, ipAddress);
 
-  return {
-    ...basicDetails(account),
-    jwtToken,
-    refreshToken: refreshToken.token
-  };
+    await refreshToken.save();
+
+    return {
+        ...basicDetails(account),
+        jwtToken,
+        refreshToken: refreshToken.token
+    };
 }
 
 async function refreshToken({ token, ipAddress }: any) {
@@ -88,38 +93,29 @@ async function revokeToken({ token, ipAddress }: any) {
     await refreshToken.save();
 }
 
-async function register(params: any, origin: string) {
-    if (await db.Account.findOne({ where: { email: params.email } })) {
-        await sendAlreadyRegisteredEmail(params.email);
-        return {
-            message: 'Registration successful. Please check your email for verification instructions.'
-        };
-    }
+async function register(params: any, origin: any) {
+    params.email = String(params.email).trim().toLowerCase();
 
-    const accountCount = await db.Account.count();
-    const isFirstAccount = accountCount === 0;
+    if (await db.Account.findOne({ where: { email: params.email } })) {
+        throw 'Email "' + params.email + '" is already registered';
+    }
 
     const account = new db.Account(params);
 
-    account.email = params.email.toLowerCase().trim();
-    account.role = isFirstAccount ? 'Admin' : 'User';
-    account.verificationToken = isFirstAccount ? null : randomTokenString();
-    account.verified = isFirstAccount ? new Date() : null;
+    const isFirstAccount = (await db.Account.count()) === 0;
+    account.role = isFirstAccount ? Role.Admin : Role.User;
+
+    account.verificationToken = randomTokenString();
+    account.verified = null;
+
     account.passwordHash = await hash(params.password);
 
     await account.save();
 
-   try {
-  await sendVerificationEmail(account, origin);
-} catch (error) {
-  console.error('Verification email failed:', error);
-  throw 'Registration saved, but verification email failed to send. Please check SMTP/Ethereal settings.';
-}
+    await sendVerificationEmail(account, origin);
 
     return {
-        message: isFirstAccount
-            ? 'Registration successful. Admin account is already verified. You can now login.'
-            : 'Registration successful. Please check your email to verify your account.'
+        message: 'Registration successful, please check your email to verify your account.'
     };
 }
 
@@ -143,21 +139,25 @@ async function verifyEmail({ token }: any) {
     };
 }
 
-async function forgotPassword({ email }: any, origin: string) {
+async function forgotPassword({ email }: any, origin: any) {
     email = String(email).trim().toLowerCase();
 
-    const account = await db.Account.findOne({
-        where: { email }
-    });
+    const account = await db.Account.findOne({ where: { email } });
 
-    if (!account) return;
+    if (!account) {
+        throw 'Account does not exist';
+    }
 
     account.resetToken = randomTokenString();
     account.resetTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     await account.save();
 
-    await sendPasswordResetEmail(account);
+    await sendPasswordResetEmail(account, origin);
+
+    return {
+        message: 'Please check your email for password reset instructions.'
+    };
 }
 
 async function validateResetToken({ token }: any) {
@@ -334,31 +334,31 @@ function basicDetails(account: any) {
     return { id, title, firstName, lastName, email, role, created, updated, isVerified };
 }
 
-async function sendVerificationEmail(account: any, origin: string) {
-  let message: string;
+async function sendVerificationEmail(account: any, origin: any) {
+    const frontendUrl = process.env.FRONTEND_URL || origin;
 
-  if (origin) {
-    const verifyUrl = `${origin}/account/verify-email?token=${account.verificationToken}`;
-    message = `
-      <p>Please click the link below to verify your email address:</p>
-      <p><a href="${verifyUrl}">${verifyUrl}</a></p>
-    `;
-  } else {
-    message = `
-      <p>Please use the token below to verify your email address:</p>
-      <p><code>${account.verificationToken}</code></p>
-    `;
-  }
+    if (!frontendUrl) {
+        throw 'FRONTEND_URL is required for verification email';
+    }
 
-  await sendEmail({
-    to: account.email,
-    subject: 'Verify Email',
-    html: `
-      <h4>Verify Email</h4>
-      <p>Thanks for registering.</p>
-      ${message}
-    `
-  });
+    const verifyUrl = `${frontendUrl}/account/verify-email?token=${account.verificationToken}`;
+
+    await sendEmail({
+        to: account.email,
+        subject: 'Verify your email address',
+        html: `
+            <h3>Verify Email</h3>
+            <p>Thank you for registering.</p>
+            <p>Please click the link below to verify your email address:</p>
+            <p>
+                <a href="${verifyUrl}" target="_self">
+                    Verify Email
+                </a>
+            </p>
+            <p>If the button does not work, copy and paste this link:</p>
+            <p>${verifyUrl}</p>
+        `
+    });
 }
 async function sendAlreadyRegisteredEmail(email: string) {
     const message = `
@@ -374,17 +374,29 @@ async function sendAlreadyRegisteredEmail(email: string) {
     });
 }
 
-async function sendPasswordResetEmail(account: any) {
-    const resetUrl = `${frontendUrl}/account/reset-password?token=${account.resetToken}`;
+async function sendPasswordResetEmail(account: any, origin: any) {
+    const frontendUrl = process.env.FRONTEND_URL || origin;
 
-    const message = `
-        <p>Please click the link below to reset your password:</p>
-        <p><a href="${resetUrl}">${resetUrl}</a></p>
-    `;
+    if (!frontendUrl) {
+        throw 'FRONTEND_URL is required for password reset email';
+    }
+
+    const resetUrl = `${frontendUrl}/account/reset-password?token=${account.resetToken}`;
 
     await sendEmail({
         to: account.email,
-        subject: 'Sign-up Verification API - Reset Password',
-        html: `<h4>Reset Password Email</h4>${message}`
+        subject: 'Reset your password',
+        html: `
+            <h3>Reset Password</h3>
+            <p>Please click the link below to reset your password.</p>
+            <p>This link is valid for 24 hours.</p>
+            <p>
+                <a href="${resetUrl}" target="_self">
+                    Reset Password
+                </a>
+            </p>
+            <p>If the button does not work, copy and paste this link:</p>
+            <p>${resetUrl}</p>
+        `
     });
 }
