@@ -1,40 +1,38 @@
 import nodemailer from 'nodemailer';
 
-export default sendEmail;
-
-async function sendEmail({ to, subject, html }: any) {
-    const host = process.env.SMTP_HOST;
-    const port = Number(process.env.SMTP_PORT || 587);
-    const secure = process.env.SMTP_SECURE === 'true';
-    const user = process.env.SMTP_USER;
-    const pass = process.env.SMTP_PASS;
-    const from = process.env.EMAIL_FROM || user;
-
-    if (!host || !user || !pass) {
-        throw new Error('SMTP settings are missing. Check SMTP_HOST, SMTP_USER, and SMTP_PASS.');
+export default async function sendEmail({
+  to,
+  subject,
+  html,
+  from = process.env.EMAIL_FROM || 'Account System <no-reply@test.com>'
+}: {
+  to: string;
+  subject: string;
+  html: string;
+  from?: string;
+}) {
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS
     }
+  });
 
-    const transporter = nodemailer.createTransport({
-        host,
-        port,
-        secure,
-        auth: {
-            user,
-            pass
-        }
-    });
+  const info = await transporter.sendMail({
+    from,
+    to,
+    subject,
+    html
+  });
 
-    const info = await transporter.sendMail({
-        from,
-        to,
-        subject,
-        html
-    });
+  const previewUrl = nodemailer.getTestMessageUrl(info);
 
-    console.log('Email sent:', info.messageId);
+  if (previewUrl) {
+    console.log('Ethereal preview URL:', previewUrl);
+  }
 
-    const previewUrl = nodemailer.getTestMessageUrl(info);
-    if (previewUrl) {
-        console.log('Ethereal preview URL:', previewUrl);
-    }
+  return info;
 }

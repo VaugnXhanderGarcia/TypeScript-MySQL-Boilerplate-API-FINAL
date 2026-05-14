@@ -109,9 +109,12 @@ async function register(params: any, origin: string) {
 
     await account.save();
 
-    if (!isFirstAccount) {
-        await sendVerificationEmail(account, origin);
-    }
+   try {
+  await sendVerificationEmail(account, origin);
+} catch (error) {
+  console.error('Verification email failed:', error);
+  throw 'Registration saved, but verification email failed to send. Please check SMTP/Ethereal settings.';
+}
 
     return {
         message: isFirstAccount
@@ -332,20 +335,30 @@ function basicDetails(account: any) {
 }
 
 async function sendVerificationEmail(account: any, origin: string) {
-    const frontendUrl = process.env.FRONTEND_URL || origin;
+  let message: string;
 
-    const verifyUrl = `${frontendUrl}/account/verify-email?token=${account.verificationToken}`;
-
-    const message = `
-        <p>Please click the link below to verify your email address:</p>
-        <p><a href="${verifyUrl}" target="_self">${verifyUrl}</a></p>
+  if (origin) {
+    const verifyUrl = `${origin}/account/verify-email?token=${account.verificationToken}`;
+    message = `
+      <p>Please click the link below to verify your email address:</p>
+      <p><a href="${verifyUrl}">${verifyUrl}</a></p>
     `;
+  } else {
+    message = `
+      <p>Please use the token below to verify your email address:</p>
+      <p><code>${account.verificationToken}</code></p>
+    `;
+  }
 
-    await sendEmail({
-        to: account.email,
-        subject: 'Sign-up Verification API - Verify Email',
-        html: `<h4>Verify Email</h4>${message}`
-    });
+  await sendEmail({
+    to: account.email,
+    subject: 'Verify Email',
+    html: `
+      <h4>Verify Email</h4>
+      <p>Thanks for registering.</p>
+      ${message}
+    `
+  });
 }
 async function sendAlreadyRegisteredEmail(email: string) {
     const message = `
