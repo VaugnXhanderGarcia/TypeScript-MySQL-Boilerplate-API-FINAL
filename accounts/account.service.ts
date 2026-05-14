@@ -368,7 +368,7 @@ async function sendPasswordResetEmail(account: any, origin: any) {
         throw 'FRONTEND_URL is required for password reset email';
     }
 
-    const resetUrl = `${frontendUrl}/account/reset-password?token=${account.resetToken}`;
+const resetUrl = `${process.env.FRONTEND_URL}/account/reset-password?token=${account.resetToken}`;
 
     await sendEmail({
         to: account.email,
@@ -378,9 +378,7 @@ async function sendPasswordResetEmail(account: any, origin: any) {
             <p>Please click the link below to reset your password.</p>
             <p>This link is valid for 24 hours.</p>
             <p>
-                <a href="${resetUrl}" target="_self">
-                    Reset Password
-                </a>
+                <a href="${resetUrl}">Reset Password</a>
             </p>
             <p>If the button does not work, copy and paste this link:</p>
             <p>${resetUrl}</p>
