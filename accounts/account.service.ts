@@ -112,7 +112,7 @@ async function register(params: any, origin: any) {
 
     await account.save();
 
-    await sendVerificationEmail(account, origin);
+    await sendVerificationEmail(account);
 
     return {
         message: 'Registration successful, please check your email to verify your account.'
@@ -125,18 +125,13 @@ async function verifyEmail({ token }: any) {
     });
 
     if (!account) {
-        throw 'Verification failed';
+        throw 'Verification failed. Token is invalid or already used.';
     }
 
     account.verified = new Date();
     account.verificationToken = null;
-    account.acceptTerms = true;
 
     await account.save();
-
-    return {
-        message: 'Verification successful. You can now log in.'
-    };
 }
 
 async function forgotPassword({ email }: any, origin: any) {
@@ -334,30 +329,22 @@ function basicDetails(account: any) {
     return { id, title, firstName, lastName, email, role, created, updated, isVerified };
 }
 
-async function sendVerificationEmail(account: any, origin: any) {
-    const frontendUrl = process.env.FRONTEND_URL || origin;
+async function sendVerificationEmail(account: any) {
+    const verifyUrl = `${process.env.FRONTEND_URL}/account/verify-email?token=${account.verificationToken}`;
 
-    if (!frontendUrl) {
-        throw 'FRONTEND_URL is required for verification email';
-    }
-
-    const verifyUrl = `${frontendUrl}/account/verify-email?token=${account.verificationToken}`;
+    const message = `
+        <h3>Verify Email</h3>
+        <p>Thank you for registering.</p>
+        <p>Please click the link below to verify your email address:</p>
+        <p><a href="${verifyUrl}">Verify Email</a></p>
+        <p>If the link does not work, copy and paste this URL:</p>
+        <p>${verifyUrl}</p>
+    `;
 
     await sendEmail({
         to: account.email,
         subject: 'Verify your email address',
-        html: `
-            <h3>Verify Email</h3>
-            <p>Thank you for registering.</p>
-            <p>Please click the link below to verify your email address:</p>
-            <p>
-                <a href="${verifyUrl}" target="_self">
-                    Verify Email
-                </a>
-            </p>
-            <p>If the button does not work, copy and paste this link:</p>
-            <p>${verifyUrl}</p>
-        `
+        html: message
     });
 }
 async function sendAlreadyRegisteredEmail(email: string) {
