@@ -1,19 +1,17 @@
 import 'dotenv/config';
 import express from 'express';
 import cookieParser from 'cookie-parser';
-import cors, { CorsOptions } from 'cors';
-import swaggerUi from 'swagger-ui-express';
-
+import cors from 'cors';
 import errorHandler from './_middleware/error-handler';
 import accountsController from './accounts/accounts.controller';
 import { initialize } from './_helpers/db';
+import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './swagger';
 
 const app = express();
 
 app.disable('etag');
 
-// Disable browser/API caching
 app.use((req, res, next) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -21,42 +19,32 @@ app.use((req, res, next) => {
   res.setHeader('Surrogate-Control', 'no-store');
   next();
 });
-app.use(express.urlencoded({ extended: false }));
-app.use(express.json());
-app.use(cookieParser());
 
-const allowedOrigins = [
-  'http://localhost:4200',
-  'https://angular-auth-frontend-final-frontend.onrender.com',
-  'https://angular-auth-final.onrender.com'
-];
+const allowedOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(origin => origin.length > 0);
 
 const corsOptions: cors.CorsOptions = {
-  origin: function (origin, callback) {
-    if (!origin) {
-      return callback(null, true);
-    }
-
-    if (allowedOrigins.includes(origin)) {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
 
     return callback(new Error('Not allowed by CORS'));
   },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  credentials: true
 };
 
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
+app.use(cookieParser());
 
-
-// Swagger API documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Root route
 app.get('/', (req, res) => {
   res.json({
     message: 'Angular Auth API is running',
@@ -64,10 +52,8 @@ app.get('/', (req, res) => {
   });
 });
 
-// API routes
 app.use('/accounts', accountsController);
 
-// Global error handler
 app.use(errorHandler);
 
 const port = process.env.PORT || 4000;
@@ -83,10 +69,3 @@ initialize()
     console.error(err);
     process.exit(1);
   });
-
-  /*DB_HOST=your-supabase-host.supabase.co
-    DB_PORT=5432
-    DB_USER=postgres
-    DB_PASSWORD=nashnashvaugn09
-    DB_NAME=postgres
-    DB_SSL=true*/
