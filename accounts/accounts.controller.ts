@@ -293,11 +293,13 @@
         validateRequest(req, next, schema);
     }
 
-    function forgotPassword(req: any, res: any, next: any) {
-        accountService.forgotPassword(req.body, req.get('origin'))
-            .then(() => res.json({ message: 'Please check your email for password reset instructions' }))
-            .catch(next);
-    }
+   function forgotPassword(req, res, next) {
+  accountService.forgotPassword(req.body, req.get('origin'))
+    .then(() => res.json({
+      message: 'Please check your email for password reset instructions'
+    }))
+    .catch(next);
+}
 
     function validateResetTokenSchema(req: any, res: any, next: any) {
         const schema = Joi.object({
@@ -306,11 +308,12 @@
         validateRequest(req, next, schema);
     }
 
-    function validateResetToken(req: any, res: any, next: any) {
-        accountService.validateResetToken(req.body)
-            .then(() => res.json({ message: 'Token is valid' }))
-            .catch(next);
-    }
+   function validateResetToken(req, res, next) {
+  accountService.validateResetToken(req.body)
+    .then(() => res.json({ message: 'Token is valid' }))
+    .catch(next);
+}
+
 
     function resetPasswordSchema(req: any, res: any, next: any) {
         const schema = Joi.object({
@@ -321,11 +324,13 @@
         validateRequest(req, next, schema);
     }
 
-    function resetPassword(req: any, res: any, next: any) {
-        accountService.resetPassword(req.body)
-            .then(() => res.json({ message: 'Password reset successful, you can now login' }))
-            .catch(next);
-    }
+    function resetPassword(req, res, next) {
+  accountService.resetPassword(req.body)
+    .then(() => res.json({
+      message: 'Password reset successful, you can now login'
+    }))
+    .catch(next);
+}
 
     function getAll(req: any, res: any, next: any) {
         accountService.getAll()
