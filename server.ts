@@ -20,7 +20,10 @@ app.use((req, res, next) => {
   next();
 });
 
-const allowedOrigins = (process.env.CORS_ORIGIN || '')
+const allowedOrigins = (
+  process.env.CORS_ORIGIN ||
+  'http://localhost:4200,https://angular-auth-frontend-final-frontend.onrender.com'
+)
   .split(',')
   .map(origin => origin.trim())
   .filter(origin => origin.length > 0);
