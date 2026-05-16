@@ -22,7 +22,11 @@ app.use((req, res, next) => {
 
 const allowedOrigins = (
   process.env.CORS_ORIGIN ||
-  'http://localhost:4200,https://angular-auth-frontend-final-frontend.onrender.com'
+  [
+    'http://localhost:4200',
+    'https://angular-auth-frontend-final-frontend.onrender.com',
+    'https://angular-auth-final.onrender.com'
+  ].join(',')
 )
   .split(',')
   .map(origin => origin.trim())
@@ -34,9 +38,12 @@ const corsOptions: cors.CorsOptions = {
       return callback(null, true);
     }
 
+    console.log('Blocked by CORS:', origin);
     return callback(new Error('Not allowed by CORS'));
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 };
 
 app.use(cors(corsOptions));
