@@ -22,11 +22,7 @@ app.use((req, res, next) => {
 
 const allowedOrigins = (
   process.env.CORS_ORIGIN ||
-  [
-    'http://localhost:4200',
-    'https://angular-auth-frontend-final-frontend.onrender.com',
-    'https://angular-auth-final.onrender.com'
-  ].join(',')
+  'http://localhost:4200,https://angular-auth-frontend-final-frontend.onrender.com,https://angular-auth-final.onrender.com'
 )
   .split(',')
   .map(origin => origin.trim())
